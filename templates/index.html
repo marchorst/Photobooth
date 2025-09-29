@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fotobox</title>
+    <link
+    rel="stylesheet"
+    href="animate.min.css"
+  />
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            --preview-gap: clamp(0.75rem, 2vw, 1.6rem);
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f7f9ff 0%, #ffffff 60%, #f0f4ff 100%);
+            color: #15324b;
+        }
+        .app {
+            position: relative;
+            min-height: 100vh;
+            width: 100%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: clamp(1.5rem, 4vw, 3rem);
+        }
+        .app::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(45% 45% at 20% 20%, rgba(70, 156, 255, 0.25), transparent 70%),
+                        radial-gradient(50% 45% at 80% 10%, rgba(255, 182, 72, 0.25), transparent 72%),
+                        radial-gradient(60% 60% at 50% 100%, rgba(255, 120, 164, 0.18), transparent 80%);
+            z-index: 0;
+        }
+        .preview-frame {
+            position: absolute;
+            inset: var(--preview-gap);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 28px;
+            overflow: hidden;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+        }
+        .preview-frame.is-active {
+            opacity: 1;
+        }
+        #preview {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            object-position: center;
+            filter: saturate(105%) contrast(102%);
+        }
+        .overlay {
+            position: relative;
+            z-index: 2;
+            min-width: clamp(320px, 58vw, 520px);
+            padding: clamp(1.75rem, 4vw, 2.75rem);
+            border-radius: 28px;
+            text-align: center;
+            color: #fff;
+        }
+        h1 {
+            margin: 0 0 1rem;
+            font-size: clamp(2rem, 4vw, 2.6rem);
+            letter-spacing: 0.04em;
+        }
+        button {
+            appearance: none;
+            border: none;
+            background: linear-gradient(120deg, #3a8dff, #79b8ff);
+            color: #fff;
+            font-size: clamp(1.2rem, 2.6vw, 1.5rem);
+            font-weight: 600;
+            padding: 1rem clamp(2.25rem, 6vw, 3rem);
+            border-radius: 999px;
+            cursor: pointer;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+            touch-action: manipulation;
+            box-shadow: 0 16px 32px rgba(62, 134, 255, 0.35);
+        }
+        button:disabled {
+            background: linear-gradient(120deg, #b9c6d9, #d3deee);
+            box-shadow: none;
+            cursor: wait;
+            filter: grayscale(0.1);
+        }
+        button:not(:disabled):hover,
+        button:not(:disabled):focus-visible {
+            transform: translateY(-2px);
+            box-shadow: 0 22px 36px rgba(62, 134, 255, 0.28);
+            outline: none;
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .secondary {
+            background: rgba(21, 50, 75, 0.9);
+            box-shadow: 0 14px 28px rgba(21, 50, 75, 0.28);
+        }
+        .secondary:not(:disabled):hover,
+        .secondary:not(:disabled):focus-visible {
+            box-shadow: 0 18px 32px rgba(21, 50, 75, 0.32);
+        }
+        .bottom-controls {
+            position: absolute;
+            left: 50%;
+            bottom: clamp(1rem, 5vh, 2.5rem);
+            transform: translateX(-50%);
+            z-index: 3;
+            display: none;
+            gap: 1rem;
+            align-items: center;
+            justify-content: center;
+        }
+        .bottom-controls.is-visible {
+            display: flex;
+        }
+        #countdown {
+            font-size: clamp(8rem, 16vw, 4.5rem);
+            margin: clamp(1rem, 3vw, 1.5rem) 0;
+            min-height: 4rem;
+            letter-spacing: 0.08em;
+            color: #ffffff;
+        }
+        #status {
+            display: none;
+            margin-top: 1rem;
+            min-height: 1.5rem;
+            font-size: clamp(1rem, 2.4vw, 1.1rem);
+            color: #264d6d;
+        }
+        .cheese {
+            color: #000 !important;
+        }
+        @media (max-width: 640px) {
+            .overlay {
+                width: min(90vw, 420px);
+                border-radius: 22px;
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition-duration: 0.01ms !important;
+                animation-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="preview-frame" aria-hidden="true">
+            <img id="preview" alt="Live-Vorschau" />
+        </div>
+        <div class="overlay">
+            <svg xmlns="http://www.w3.org/2000/svg" id="logo" data-name="Ebene 2" viewBox="0 0 824.56 329.48">
+  <g id="Ebene_1-2" data-name="Ebene 1">
+    <g id="tLtFEt.tif">
+      <path d="M414.85,18.41c1.4-1.03,4-10.07,6.19-12.59,9.72-11.16,32.18-5.22,36.5,10.3,5.63,20.27-6.4,36.87-20.58,49.57-3.08,2.76-17.83,12.38-17.79,15.23s14.25,12.11,17.36,14.14c17.94,11.68,47.11,26.31,67.52,32.41,27.42,8.2,51.02-4.56,76.47-12.29,14.02-4.26,37.72-8.6,50.03-15.33,5.41-2.96,11.91-21.17,21.05-13.47,3.97,3.35,2.18,6.99,5.86,9.68.6.3,1.15.01,1.72-.05,1.77-.18,25.13-17.75,29.34-20.3,6.93-4.19,17.04-10.07,24.46-12.86,2.41-.91,17.62-5.69,19.33-5.73,5.1-.11,15.15,6.15,16.11,11.91,3.4,20.26-16.65,45.47-24.76,63.21,2.24,6.26,5.69,1.03,9.28-.09,2.46-.76,6.78-1.89,9.3-1.51,19.72,2.97,4.58,33.74,3.36,45.73-3.88,38.1,25.68,26.26,44.43,10.94,5.93-4.84,18.04-20.42,23.4-23.07,5.66-2.79,12-.4,11.03,6.53-2.23,15.92-43.37,48.06-59.72,50.2-40.07,5.25-41.23-26.19-35.64-56,.54-2.9,4.88-6.89-.83-9.42-12.55,6.25-24.73,15.83-33.97,26.47-4.62,5.32-16.02,24.69-21.09,26.98-9.24,4.18-14.95-.6-14.14-10.25.75-9.03,18.55-27.81,24.5-36.45,13.3-19.32,33.58-51.73,43.44-72.58,7.68-16.26-1.14-12.16-12.21-7.6-23.9,9.85-81.21,53.4-95.9,74.48-17.31,24.85-31.64,51.42-52.49,74.41-5.42,5.98-10.51,11.68-19.22,6.68-4.87-2.8-4.6-8.32-3.97-13.38,1.8-14.55,33.32-53.41,44.14-65.28,6.66-7.3,14.28-12.07,20.26-20.23,20.03-27.38-.12-15.21-14.38-11.26-65.82,18.22-88.84,19.12-148.87-15.36-11.22-6.44-25.14-18.46-35.49-23.47-1.72-.83-2.7-1.77-4.85-1.58-2.59.23-13.56,6.18-17.04,7.49-45.31,17.07-94.63,25.53-141.08,42.81-12.62,4.69-74.47,29.57-79.98,37.44-5.96,8.52-12.83,26.54-18.58,36.87-24.83,44.57-55.13,89.57-103.34,111.5-30.78,14-53.13,4.66-40.3-31.79,14.35-40.74,71.54-81.35,107.21-103.63,7.5-4.68,36.34-19.02,39.66-24.3,3.13-4.97,8.94-24.38,10.64-30.82,2.1-7.96,2.5-15.95,5.48-24.99,1.86-5.62,8.72-18.42,9.42-22.05,2.24-11.56-17.02-6.04-24-6.02-13.08.04-66.14-2.31-72.95-14.03-2.77-4.76,0-10.27,5.41-10.41,4.43-.12,21.58,5.36,28.17,6.31,18.81,2.7,38.4,2.87,57.33,1.11,8.33-.77,20.64-4.42,27.99-4.5,21.76-.26-3.94,41.43-7.32,49.64-3.15,7.64-12.6,31.92-13.56,38.89-.36,2.64-.93,4.58,2.84,4.39,2.76-.14,34.29-14.95,40.22-17.29,31.05-12.26,62.8-23.07,95.02-31.9,15.69-4.3,66.55-13.62,76.56-21.88,5.36-4.42-6.02-13.5-9.08-18.09-9.79-14.67-25.31-43.74-6.47-57.4,7.85-5.69,15.86-5.84,24.3-1.37,6.31,3.34,7.98,19.89,14.29,15.26ZM445.42,17.49c-6.23-9.77-18.22-5.1-23.24,3.45-2.23,3.8-4.73,22.68-12.19,13.73-5.01-6.01-13.46-33.47-27.25-20.69-12.97,12.02,9.36,44.19,18.97,53.45,2.22,2.14,3.68,4.73,7.22,4.21,2.41-.35,17.25-11.25,19.87-13.5,10.12-8.66,25.44-26.84,16.63-40.66ZM29.1,273.67c-11.22,15.94-31.75,54.84,8.13,37.85,39.63-16.88,84.37-75.19,98.85-114.99,5.14-14.13-10.5-1.55-16.18,1.81-29.32,17.37-71.23,47.53-90.8,75.33Z"/>
+    </g>
+  </g>
+</svg>
+            <button id="capture" type="button">Foto aufnehmen</button>
+            <div id="countdown" aria-live="assertive"></div>
+            <div id="status" role="status" aria-live="polite"></div>
+        </div>
+        <div class="bottom-controls" id="bottomControls">
+            <button id="restart" class="secondary" type="button">zurück</button>
+        </div>
+    </div>
+
+    <script>
+        const logo = document.getElementById('logo');
+        const captureButton = document.getElementById('capture');
+        const countdownEl = document.getElementById('countdown');
+        const statusEl = document.getElementById('status');
+        const previewFrameEl = document.querySelector('.preview-frame');
+        const previewEl = document.getElementById('preview');
+        const bottomControlsEl = document.getElementById('bottomControls');
+        const restartButton = document.getElementById('restart');
+
+        let countdownTimer = null;
+        let isCapturing = false;
+        let currentStreamUrl = null;
+        let idleTimer = null;
+        let previewFadeTimeout = null;
+
+        captureButton.addEventListener('click', startCaptureFlow);
+        restartButton.addEventListener('click', () => {
+            window.location.reload();
+            return;
+        });
+
+        hideBottomControls();
+
+        async function startCaptureFlow() {
+            if (isCapturing) {
+                return;
+            }
+
+            isCapturing = true;
+            captureButton.disabled = true;
+            captureButton.hidden = true;
+            statusEl.textContent = 'Kamera wird vorbereitet…';
+            hidePreview();
+            hideBottomControls();
+            clearIdleTimer();
+
+            try {
+                const previewData = await postAction('/api/preview/start');
+                currentStreamUrl = previewData.stream_url;
+
+                if (!currentStreamUrl) {
+                    throw new Error('Vorschau nicht verfügbar');
+                }
+
+                const cacheBust = currentStreamUrl.includes('?') ? '&' : '?';
+                showPreview(`${currentStreamUrl}${cacheBust}t=${Date.now()}`);
+                statusEl.textContent = 'Warte auf Live-Vorschau…';
+
+                await waitForPreviewFrame();
+                statusEl.textContent = 'Live-Vorschau aktiv';
+
+                await runCountdown(5);
+
+                await postAction('/api/preview/stop');
+                hidePreview();
+
+                const payload = await postAction('/api/capture');
+                const successMessage = payload.message || 'Foto gespeichert';
+                statusEl.textContent = `${successMessage} – automatische Rückkehr in 10 Sekunden.`;
+
+                if (payload.photo_url) {
+                    showPreview(`${payload.photo_url}?t=${Date.now()}`);
+                    captureButton.hidden = true;
+                    showBottomControls();
+                    startIdleTimer();
+                }
+            } catch (error) {
+                statusEl.textContent = error?.message || 'Aufnahme fehlgeschlagen';
+                await safeStopPreview();
+            } finally {
+                cancelCountdown();
+                captureButton.disabled = false;
+                if (!previewFrameEl.classList.contains('is-active')) {
+                    captureButton.hidden = false;
+                }
+                isCapturing = false;
+            }
+        }
+
+        function showPreview(src) {
+            clearPreviewAnimationState();
+            if (src) {
+                previewEl.src = src;
+            }
+            previewFrameEl.classList.add('is-active');
+            playPreviewAnimation('animate__fadeIn');
+            playLogoAnimation('animate__fadeOut');
+        }
+
+        function hidePreview() {
+            currentStreamUrl = null;
+            const finalizeHide = () => {
+                previewFrameEl.classList.remove('is-active');
+                previewEl.removeAttribute('src');
+                playLogoAnimation('animate__fadeIn');
+            };
+
+            if (!previewFrameEl.classList.contains('is-active')) {
+                clearPreviewAnimationState();
+                finalizeHide();
+                return;
+            }
+
+            playPreviewAnimation('animate__fadeOut', finalizeHide);
+        }
+
+        function showBottomControls() {
+            restartButton.disabled = false;
+            bottomControlsEl.classList.add('is-visible');
+            requestAnimationFrame(() => {
+                restartButton.focus();
+            });
+        }
+
+        function hideBottomControls() {
+            restartButton.disabled = true;
+            bottomControlsEl.classList.remove('is-visible');
+            restartButton.blur();
+        }
+
+        function startIdleTimer() {
+            clearIdleTimer();
+            idleTimer = setTimeout(() => {
+                window.location.reload();
+            }, 10000);
+        }
+
+        function clearIdleTimer() {
+            if (idleTimer !== null) {
+                clearTimeout(idleTimer);
+                idleTimer = null;
+            }
+        }
+
+        async function safeStopPreview() {
+            try {
+                await postAction('/api/preview/stop');
+            } catch (_) {
+                // ignore cleanup errors
+            }
+        }
+        document.documentElement.style.setProperty('--animate-duration', '.5s');
+        const ANIMATION_DURATION_MS = 500;
+
+        const COUNTDOWN_ANIMATION_CLASSES = ['animate__zoomIn', 'animate__zoomOut'];
+        const LOGO_ANIMATION_CLASSES = ['animate__fadeIn', 'animate__fadeOut'];
+        const PREVIEW_ANIMATION_CLASSES = ['animate__fadeIn', 'animate__fadeOut'];
+
+        function restartCountdownAnimation(animationClass) {
+            COUNTDOWN_ANIMATION_CLASSES.forEach((cls) => countdownEl.classList.remove(cls));
+            countdownEl.classList.add('animate__animated');
+            void countdownEl.offsetWidth;
+            countdownEl.classList.add(animationClass);
+        }
+
+        function playLogoAnimation(animationClass) {
+            LOGO_ANIMATION_CLASSES.forEach((cls) => logo.classList.remove(cls));
+            logo.classList.add('animate__animated');
+            void logo.offsetWidth;
+            logo.classList.add(animationClass);
+        }
+
+        function clearPreviewAnimationState() {
+            if (previewFadeTimeout !== null) {
+                clearTimeout(previewFadeTimeout);
+                previewFadeTimeout = null;
+            }
+            previewFrameEl.classList.remove('animate__animated');
+            PREVIEW_ANIMATION_CLASSES.forEach((cls) => previewFrameEl.classList.remove(cls));
+        }
+
+        function playPreviewAnimation(animationClass, onComplete) {
+            clearPreviewAnimationState();
+            previewFrameEl.classList.add('animate__animated');
+            void previewFrameEl.offsetWidth;
+            previewFrameEl.classList.add(animationClass);
+
+            previewFadeTimeout = setTimeout(() => {
+                previewFadeTimeout = null;
+                previewFrameEl.classList.remove('animate__animated');
+                previewFrameEl.classList.remove(animationClass);
+                onComplete?.();
+            }, ANIMATION_DURATION_MS);
+        }
+
+        function runCountdown(seconds) {
+            countdownEl.classList.remove('cheese');
+            countdownEl.classList.add('animate__animated');
+            
+            logo.style.display= "none";
+            return new Promise((resolve) => {
+                let remaining = seconds;
+                countdownEl.textContent = remaining;
+                restartCountdownAnimation('animate__zoomIn');
+
+                countdownTimer = setInterval(() => {
+                    remaining -= 1;
+
+                    if (remaining > 0) {
+                        countdownEl.textContent = remaining;
+                        restartCountdownAnimation('animate__zoomIn');
+                        return;
+                    }
+
+                    clearInterval(countdownTimer);
+                    countdownTimer = null;
+                    countdownEl.textContent = 'Lächeln!';
+                    countdownEl.classList.remove('animate__zoomIn');
+                    countdownEl.classList.add('cheese');
+                    countdownEl.classList.add('animate__animated');
+                    countdownEl.classList.add('animate__infinite');
+                    countdownEl.classList.add('animate__pulse');
+                    //restartCountdownAnimation('animate__zoomIn');
+                    resolve();
+                }, 1000);
+            });
+        }
+
+        function cancelCountdown() {
+            if (countdownTimer !== null) {
+                clearInterval(countdownTimer);
+                countdownTimer = null;
+            }
+
+            countdownEl.textContent = '';
+            countdownEl.classList.remove('animate__animated', 'cheese');
+            COUNTDOWN_ANIMATION_CLASSES.forEach((cls) => countdownEl.classList.remove(cls));
+        }
+
+        function waitForPreviewFrame(timeoutMs = 7000) {
+            if (previewEl.naturalWidth > 0 && previewEl.naturalHeight > 0) {
+                return Promise.resolve();
+            }
+
+            return new Promise((resolve, reject) => {
+                let settled = false;
+
+                const cleanup = () => {
+                    previewEl.removeEventListener('load', onLoad);
+                    previewEl.removeEventListener('error', onError);
+                    clearTimeout(timer);
+                };
+
+                const onLoad = () => {
+                    if (settled) {
+                        return;
+                    }
+                    settled = true;
+                    cleanup();
+                    resolve();
+                };
+
+                const onError = () => {
+                    if (settled) {
+                        return;
+                    }
+                    settled = true;
+                    cleanup();
+                    reject(new Error('Vorschau konnte nicht geladen werden'));
+                };
+
+                const timer = setTimeout(() => {
+                    if (settled) {
+                        return;
+                    }
+                    settled = true;
+                    cleanup();
+                    reject(new Error('Vorschau startete nicht rechtzeitig'));
+                }, timeoutMs);
+
+                previewEl.addEventListener('load', onLoad, { once: true });
+                previewEl.addEventListener('error', onError, { once: true });
+            });
+        }
+
+        async function postAction(url, body = {}) {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(body),
+            });
+
+            const payload = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(payload?.error || 'Unbekannter Fehler');
+            }
+
+            return payload;
+        }
+    </script>
+</body>
+</html>
